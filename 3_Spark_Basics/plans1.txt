@@ -1,0 +1,56 @@
+== Parsed Logical Plan ==
+Union false, false
+:- Project [rank#0, name#1, net_worth#10, bday#3, age#4, nationality#11]
+:  +- Filter isnotnull(age#4)
+:     +- Join Inner, (nationality#11 = country#6)
+:        :- Project [rank#0, name#1, net_worth#10, bday#3, age#4, CASE WHEN (nationality#5 = United States of America) THEN United States WHEN (nationality#5 = French) THEN France WHEN (nationality#5 = England) THEN United Kingdom ELSE nationality#5 END AS nationality#11]
+:        :  +- Filter (net_worth#10 > 60)
+:        :     +- Project [rank#0, name#1, cast(cast(regexp_replace(net_worth#2, [^0-9.], , 1) as double) as int) AS net_worth#10, bday#3, age#4, nationality#5]
+:        :        +- Relation [rank#0,name#1,net_worth#2,bday#3,age#4,nationality#5] csv
+:        +- Relation [country#6,num_billionares#7,billionaire_per_million#8] csv
++- Filter (nationality#18 = Russia)
+   +- Project [rank#13, name#14, cast(cast(regexp_replace(net_worth#15, [^0-9.], , 1) as double) as int) AS net_worth#20, bday#16, age#17, nationality#18]
+      +- Relation [rank#13,name#14,net_worth#15,bday#16,age#17,nationality#18] parquet
+
+== Analyzed Logical Plan ==
+rank: int, name: string, net_worth: int, bday: string, age: int, nationality: string
+Union false, false
+:- Project [rank#0, name#1, net_worth#10, bday#3, age#4, nationality#11]
+:  +- Filter isnotnull(age#4)
+:     +- Join Inner, (nationality#11 = country#6)
+:        :- Project [rank#0, name#1, net_worth#10, bday#3, age#4, CASE WHEN (nationality#5 = United States of America) THEN United States WHEN (nationality#5 = French) THEN France WHEN (nationality#5 = England) THEN United Kingdom ELSE nationality#5 END AS nationality#11]
+:        :  +- Filter (net_worth#10 > 60)
+:        :     +- Project [rank#0, name#1, cast(cast(regexp_replace(net_worth#2, [^0-9.], , 1) as double) as int) AS net_worth#10, bday#3, age#4, nationality#5]
+:        :        +- Relation [rank#0,name#1,net_worth#2,bday#3,age#4,nationality#5] csv
+:        +- Relation [country#6,num_billionares#7,billionaire_per_million#8] csv
++- Filter (nationality#18 = Russia)
+   +- Project [rank#13, name#14, cast(cast(regexp_replace(net_worth#15, [^0-9.], , 1) as double) as int) AS net_worth#20, bday#16, age#17, nationality#18]
+      +- Relation [rank#13,name#14,net_worth#15,bday#16,age#17,nationality#18] parquet
+
+== Optimized Logical Plan ==
+Union false, false
+:- Project [rank#0, name#1, net_worth#10, bday#3, age#4, nationality#11]
+:  +- Join Inner, (nationality#11 = country#6)
+:     :- Project [rank#0, name#1, cast(cast(regexp_replace(net_worth#2, [^0-9.], , 1) as double) as int) AS net_worth#10, bday#3, age#4, CASE WHEN (nationality#5 = United States of America) THEN United States WHEN (nationality#5 = French) THEN France WHEN (nationality#5 = England) THEN United Kingdom ELSE nationality#5 END AS nationality#11]
+:     :  +- Filter ((isnotnull(net_worth#2) AND ((cast(cast(regexp_replace(net_worth#2, [^0-9.], , 1) as double) as int) > 60) AND isnotnull(age#4))) AND CASE WHEN (nationality#5 = United States of America) THEN true WHEN (nationality#5 = French) THEN true WHEN (nationality#5 = England) THEN true ELSE isnotnull(nationality#5) END)
+:     :     +- Relation [rank#0,name#1,net_worth#2,bday#3,age#4,nationality#5] csv
+:     +- Project [country#6]
+:        +- Filter isnotnull(country#6)
+:           +- Relation [country#6,num_billionares#7,billionaire_per_million#8] csv
++- Project [rank#13, name#14, cast(cast(regexp_replace(net_worth#15, [^0-9.], , 1) as double) as int) AS net_worth#20, bday#16, age#17, nationality#18]
+   +- Filter (isnotnull(nationality#18) AND (nationality#18 = Russia))
+      +- Relation [rank#13,name#14,net_worth#15,bday#16,age#17,nationality#18] parquet
+
+== Physical Plan ==
+AdaptiveSparkPlan isFinalPlan=false
++- Union
+   :- Project [rank#0, name#1, net_worth#10, bday#3, age#4, nationality#11]
+   :  +- BroadcastHashJoin [nationality#11], [country#6], Inner, BuildRight, false
+   :     :- Project [rank#0, name#1, cast(cast(regexp_replace(net_worth#2, [^0-9.], , 1) as double) as int) AS net_worth#10, bday#3, age#4, CASE WHEN (nationality#5 = United States of America) THEN United States WHEN (nationality#5 = French) THEN France WHEN (nationality#5 = England) THEN United Kingdom ELSE nationality#5 END AS nationality#11]
+   :     :  +- Filter (((isnotnull(net_worth#2) AND (cast(cast(regexp_replace(net_worth#2, [^0-9.], , 1) as double) as int) > 60)) AND isnotnull(age#4)) AND CASE WHEN (nationality#5 = United States of America) THEN true WHEN (nationality#5 = French) THEN true WHEN (nationality#5 = England) THEN true ELSE isnotnull(nationality#5) END)
+   :     :     +- FileScan csv [rank#0,name#1,net_worth#2,bday#3,age#4,nationality#5] Batched: false, DataFilters: [isnotnull(net_worth#2), (cast(cast(regexp_replace(net_worth#2, [^0-9.], , 1) as double) as int) ..., Format: CSV, Location: InMemoryFileIndex(1 paths)[file:/opt/spark/data/top_100_richest.csv], PartitionFilters: [], PushedFilters: [IsNotNull(net_worth), IsNotNull(age)], ReadSchema: struct<rank:int,name:string,net_worth:string,bday:string,age:int,nationality:string>
+   :     +- BroadcastExchange HashedRelationBroadcastMode(List(input[0, string, false]),false), [plan_id=155]
+   :        +- Filter isnotnull(country#6)
+   :           +- FileScan csv [country#6] Batched: false, DataFilters: [isnotnull(country#6)], Format: CSV, Location: InMemoryFileIndex(1 paths)[file:/opt/spark/data/wiki_number_of_billionaires.csv], PartitionFilters: [], PushedFilters: [IsNotNull(country)], ReadSchema: struct<country:string>
+   +- Project [rank#13, name#14, cast(cast(regexp_replace(net_worth#15, [^0-9.], , 1) as double) as int) AS net_worth#20, bday#16, age#17, nationality#18]
+      +- FileScan parquet [rank#13,name#14,net_worth#15,bday#16,age#17,nationality#18] Batched: true, DataFilters: [], Format: Parquet, Location: InMemoryFileIndex(1 paths)[file:/opt/spark/data_parquet], PartitionFilters: [isnotnull(nationality#18), (nationality#18 = Russia)], PushedFilters: [], ReadSchema: struct<rank:int,name:string,net_worth:string,bday:string,age:int>
