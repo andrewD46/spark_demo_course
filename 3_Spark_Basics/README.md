@@ -158,6 +158,7 @@ update, delete, ну и самое главное merge. Да вы можете 
 но к сожалению или к счастью это всё ещё файлы. И тут на сцену выходит преславутый deltalake с его delta table. По сути те же файлы, но уже гораздо круче и прикольнее, ибо
 на них теперь распространяется ACID, да ещё и через Delta API можно делать delete, update, merge, ну и хранить историю(позже вы узнаете всё более подробно про delta lake). Так вот,
 про таблицы ещё нужно знать что они бывают managed и external. Суть в том что в Spark ещё есть Spark warehouse(Hive warehouse). Это такое хранилище, где Spark хранит managed таблицы.
+https://www.youtube.com/watch?v=s8Z8Gex7VFw Partition pruning vid
 
 Разница в следующем:
 

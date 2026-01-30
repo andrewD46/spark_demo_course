@@ -24,9 +24,11 @@
 что является для вашего кластера маленький датафрейм, ибо на драйвер лучше не скидывать много всего. Каким параметром регулируется вы знаете, но так же добавлю что
 AQE сам может решить делать это или нет. Так же можно спровоцировать этот тип джойна с помощью хинта broadcast прямо в коде.
 
-- Чуть посложнее это salting. Вот статья которая достаточно хорошо объясняет: https://towardsdatascience.com/skewed-data-in-spark-add-salt-to-compensate-16d44404088b.
+- Чуть посложнее это salting. Вот статья которая достаточно хорошо объясняет: https://towardsdatascience.com/skewed-data-in-spark-add-salt-to-compensate-16d44404088b
+(https://www.linkedin.com/pulse/handling-data-skewness-spark-power-salting-pyspark-kommanaboina-vskic рабочая ссылка на другую статью).
 На самом деле ещё можно делать через explode() функцию в спарке для join(в прошлой статье пример с group by), вот статья только про explode(не про сам salting): 
 https://sparkbyexamples.com/spark/explode-spark-array-and-map-dataframe-column/. Как это применяется для соли при решении data skew во время Join думаю понятно.
+video about Salting(https://www.youtube.com/watch?v=rZGsc5y8AQk)
 
 - AQE. Работает в данном случае только при sort merge join. Сам AQE собирает статистику после певого этапа shuffle(shuffle write). В этот момент он может заметить 
 что одна из партиций будет слишком большой и сделать следующее: взять и засолить её самостоятельно, тем самым получив из неё не 1 партицию а несколько поменьше. 

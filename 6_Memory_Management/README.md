@@ -5,6 +5,8 @@
 
 Здесь вы познакомитесь с тем как менеджить память в спарке, ну и вообще как она устроена.
 
+Best vid ever: https://www.youtube.com/watch?v=sXL1qgrPysg
+
 
 ## Spark Memory
 
