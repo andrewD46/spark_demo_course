@@ -3,42 +3,36 @@
 
 ## Description
 
-Здесь вы познакомитесь с очень важной проблемой которая есть у всех распределенных систем, а именно перекос данных.
+Here, you will learn about a very important issue that affects all distributed systems: data skew.
 
 
 ## Theory about Data Skew
 
-В переводе на русский это перекос данных. До тех пор пока у вас все на одной машине вы не сталкнетесь с такой проблемой(вернее она может быть, вот только
-на производительность она не повлияет так сильно). Суть проблемы сразу на примере: пусть у вас есть форма для заполнения где почта необязательный параметр. В таком
-случае у вас большинство пользователей не будут его вводить. Таким образом, в ваших данных будет перекос по этому полю(для простоты 50% где ввели почту и 50% где не
-ввели). Очевидно что видов почт много и поэтому 50% введенных почт будут плюс минус нормально распрделены, а вот отсутствие почт становится реальной проблемой.
-Но в чём же проблема? Например вы хотите сгруппировать по полю почта, чтобы посмотреть собрать агрегированные данные. Под капотом спарк сделает shuffle, чтобы
-данные с одним ключом были в одной партиции. И вот у вас будут плюс минус адекватные партиции с почтами, а там где их нет будет просто огромнейшая одна партиция.
-Тут возможны два варианта: первый это спарк сможет поместить эту партицию в оперативку, а значит он будет работать пусть и очень очень медленно. В случае же если
-партиция будет больше размера оперативки то ваш executor просто упадёт. Вот приблизительно так выглядит описание проблемы, которая встречается реально часто.
+As long as you are running everything on a single machine, you won't encounter this problem (or rather, it might exist, but it won't impact performance that heavily).
+Let's look at the core of the problem right away through an example: suppose you have a registration form where the email address is an optional parameter. 
+In this case, a large portion of users simply won't enter it. As a result, you will have a data skew in this field (for simplicity's sake, let's say 50% entered an email and 50% did not).
+Obviously, there are many different email addresses, so the 50% of entered emails will be more or less evenly distributed. 
+However, the absence of emails (the nulls or empty strings) becomes a real issue. 
+But what exactly is the problem? Let's say you want to group your data by the email field to calculate some aggregations. 
+Under the hood, Spark will perform a shuffle to ensure that data with the same key ends up in the same partition.
+
+Consequently, you will get relatively reasonably sized partitions for the actual emails, but for the missing emails, you will get one incredibly massive partition. 
+Two scenarios are possible here:
+- Slow execution: Spark manages to fit this huge partition into RAM. It will eventually process it, but it will be very, very slow, creating a bottleneck.
+- OOM Error: If the massive partition exceeds the available RAM, your executor will simply crash (Out of Memory).
+
+That is roughly what this problem looks like, and it is a situation you will encounter very frequently in real-world data processing.
 
 ## Strategies to solve problem
 
-- Ну самый просто это broadcast hash join(ну очевидно если вы джойните). С этим типом соединения вы уже знакомы, суть его в том чтобы сделать хэш-таблицу из наименьшего
-датафрейма, перекинуть её на драйвер, драйвер соединит кусочки хэш-таблицы с разных работников и после отправит целую хэш-мапу на все работники. Тут важно понимать
-что является для вашего кластера маленький датафрейм, ибо на драйвер лучше не скидывать много всего. Каким параметром регулируется вы знаете, но так же добавлю что
-AQE сам может решить делать это или нет. Так же можно спровоцировать этот тип джойна с помощью хинта broadcast прямо в коде.
+- The easiest approach is the Broadcast Hash Join (assuming you are actually performing a join, of course). You are already familiar with this join type. The core concept is to create a hash table from the smaller DataFrame, send it to the driver, let the driver assemble the pieces of the hash table from the various workers, and then broadcast the complete hash map back out to all the workers. It is crucial to understand what qualifies as a "small DataFrame" for your specific cluster, as you really don't want to overload the driver with too much data. You already know which parameter controls this threshold, but I will add that AQE (Adaptive Query Execution) can also decide dynamically whether to use this join or not. Alternatively, you can explicitly trigger this join type by using a broadcast hint directly in your code.
 
-- Чуть посложнее это salting. Вот статья которая достаточно хорошо объясняет: https://towardsdatascience.com/skewed-data-in-spark-add-salt-to-compensate-16d44404088b.
-На самом деле ещё можно делать через explode() функцию в спарке для join(в прошлой статье пример с group by), вот статья только про explode(не про сам salting): 
-https://sparkbyexamples.com/spark/explode-spark-array-and-map-dataframe-column/. Как это применяется для соли при решении data skew во время Join думаю понятно.
+- A bit more complicated is **salting**
 
-- AQE. Работает в данном случае только при sort merge join. Сам AQE собирает статистику после певого этапа shuffle(shuffle write). В этот момент он может заметить 
-что одна из партиций будет слишком большой и сделать следующее: взять и засолить её самостоятельно, тем самым получив из неё не 1 партицию а несколько поменьше. 
-Да они все ещё будут на одном работнике(ибо партицию второго датасета не будешь же отправлять на разных работников), тем не менее сами партиции меньше, кол-во партиций
-на работниках после shuffle равномерно распределяется а значит то что везде будут +- одинаковые по размерам партиции(так на том работнике было много партиций и одна
-из них плюс ко всему мега большая, а так там будут те же данные большой партиции, только уже разбитые на маленькие партиции и само количество партиций будет на всех
-работниках +-одинаковое). Ну и да, AQE не гений поэтому все настройки какие данные считать перекошенными и т.д. надо настраивать через конфиги.
+- AQE (Adaptive Query Execution). In this case, it only works with a Sort Merge Join. AQE itself collects statistics after the first shuffle stage (shuffle write). At this point, it might notice that one of the partitions is going to be too large and do the following: automatically "salt" (split) it, thereby turning that single partition into several smaller ones. Yes, they will still be on the same worker (since you obviously wouldn't send the corresponding partition of the second dataset to different workers). Nevertheless, the partitions themselves are smaller, and the number of partitions on the workers after the shuffle is distributed evenly. This means you will end up with partitions of more or less the same size everywhere. (Without this, that worker would have multiple partitions with one of them being massive; with this, it holds the exact same data from the large partition, but broken down into smaller ones, keeping the total number of partitions across all workers roughly equal). And yes, AQE isn't a genius, so all the thresholds-like what data size is considered skewed, etc. - must be configured manually via configs.
 
 ![image](https://user-images.githubusercontent.com/113685144/194550587-439bbacb-50cc-4357-9623-10380032172c.png)
 
-- Очевидно что существует ещё ряд способов, но они уже более индивидуальны под конкретную ситуацию и не так часто встречаются. В принципе соли и broadcast join
-будет хватать выше крыше, ну а если ошиблись то AQE подчистит ваш косяк(по крайней мере постарается, пока ещё он не совершенен).
-
-- Вот статься если кому интересно с тем что выше+ещё чуть-чуть: https://towardsdatascience.com/five-tips-to-fasten-your-skewed-joins-in-apache-spark-420f558b219e.
+- Obviously, there are a number of other methods, but they are more tailored to specific situations and are not as common. Basically, salting and broadcast joins
+will be more than enough, but if you make a mistake, AQE will clean up your mess (or at least try to - it's not perfect yet).
 
