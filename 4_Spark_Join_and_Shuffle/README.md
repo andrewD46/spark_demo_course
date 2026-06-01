@@ -3,25 +3,21 @@
 
 ## Description
 
-Здесь вы познакомитесь со стратегиями джойнов в спарк и со стратегиями шафла в спарк.
+Here you will learn about join strategies in Spark and shuffle strategies in Spark.
 
 
 ## Theory about shuffle 
 
-На самом деле стратегии shuffle в Spark достаточно редко затрагиваются, ибо дефолтные конфиги настроены так, чтобы у вас не было проблем. Зачастую вам никогда
-не придётся даже думать о них. Тем не менее, для того чтобы понимать концепцию join, необходимо иметь представления и о shuffle. Да и на самом деле
-есть один гость tungsten shuffle, который может стать такой неплохой палочкой выручалочкой при очень больших объёмах данных. Так что приступим.
+In reality, shuffle strategies in Spark are rarely touched, as the default configs are set up so that you won't run into any problems. More often than not, you'll never even have to think about them. Nevertheless, to understand the concept of a join, you need to have an understanding of shuffles as well. Plus, there is one particular guest - the Tungsten shuffle - that can act as quite a lifesaver when dealing with very large volumes of data. So, let's get started.
 
-Лучшая статья для понимания shuffle: https://0x0fff.com/spark-architecture-shuffle/.
+Article about shuffle: https://0x0fff.com/spark-architecture-shuffle/.
 
-Есть нюанс в статье на который возможно не все обратят внимание: при spark.sql.shuffle.partitions<200 дефолтным будет стратегия hash shuffle. Если 
-spark.sql.shuffle.partitions>200, то sort based shuffle. Tungsten shuffle вообще не входит в дефолтные настройки, тем не менее в определенных ситуациях
-он реально может стать ключом к решению.
+There is a nuance in the article that some might overlook: when spark.sql.shuffle.partitions < 200, the default strategy is the Hash Shuffle. 
+If spark.sql.shuffle.partitions > 200, it becomes the Sort-based Shuffle. The Tungsten shuffle isn't part of the default settings at all; 
+however, in certain situations, it can truly be the key to solving a problem.
 
 
 ## Join strategies
 
-Сразу статья: https://habr.com/ru/company/otus/blog/556722/?ysclid=l8szwf1nmo960824093.
-В этой статье вы уже увидите различные конфиги Spark, на основе которых Spark принимает то или иное решение. На самом деле на PySpark сможет писать любой,
-настоящая сложность заключается как раз когда данных реально много и необходимо уделять внимание конфигам, настройкам и самим данным(перекошенные или нет).
+Article: https://medium.com/@ongchengjie/different-types-of-spark-join-strategies-997671fbf6b0
 
