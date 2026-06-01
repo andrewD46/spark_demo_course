@@ -4,145 +4,139 @@
 ## Description
 
 In this task you will see more information about different types of files.
-Also this topic will be mixed in languages(Russian+English)
 
 ## Parquet
 
-Parquet является довольно сложным форматом по сравнению с тем же текстовым файлом с json внутри.
-Примечательно, что свои корни этот формат пустил даже в разработки Google, а именно в их проект под названием Dremel — об этом уже упоминалось на Хабре, но мы не будем углубляться 
-в дебри Dremel, желающие могут прочитать об этом тут: research.google.com/pubs/pub36632.html.
+Parquet is a fairly complex format compared to, say, a standard text file containing JSON. 
+Notably, the roots of this format can be traced back to Google's developments, specifically to their project called Dremel. 
+This has already been mentioned on Habr, but we won't delve into the details of Dremel here; those interested can read more about it at: research.google.com/pubs/pub36632.html.
 
-Если коротко, Parquet использует архитектуру, основанную на “уровнях определения” (definition levels) и “уровнях повторения” (repetition levels), что позволяет довольно 
-эффективно кодировать данные, а информация о схеме выносится в отдельные метаданные.
-При этом оптимально хранятся и пустые значения.
+In short, Parquet uses an architecture based on "definition levels" and "repetition levels," which allows for highly efficient data encoding, 
+while the schema information is extracted into separate metadata. At the same time, empty (null) values are stored optimally.
 
-Структура Parquet-файла хорошо проиллюстрирована в документации:
+The structure of a Parquet file is well illustrated in the documentation:
 
 <p align="center">
 <img src="https://habrastorage.org/files/00c/814/4e6/00c8144e68f14eb388f8636717a7667a.gif" width="80%"></p>
 
-Файлы имеют несколько уровней разбиения на части, благодаря чему возможно довольно эффективное параллельное исполнение операций поверх них:
+Files have multiple levels of partitioning, which enables highly efficient parallel execution of operations over them:
 
-Row-group — это разбиение, позволяющее параллельно работать с данными на уровне Map-Reduce
+Row group: A partitioning level that allows for parallel data processing at the MapReduce level.
 
-Column chunk — разбиение на уровне колонок, позволяющее распределять IO операции
+Column chunk: Partitioning at the column level, which allows for the distribution of I/O operations.
 
-Page — Разбиение колонок на страницы, позволяющее распределять работу по кодированию и сжатию
+Page: The division of columns into pages, allowing for the distribution of encoding and compression workloads.
 
-Если сохранить данные в parquet файл на диск, используя самою привычную нам файловую систему, вы обнаружите, что вместо файла создаётся директория, в которой содержится целая коллекция файлов. 
-Часть из них — это метаинформация, в ней — схема, а также различная служебная информация, включая частичный индекс, позволяющий считывать только необходимые блоки данных при запросе. 
-Остальные части, или партиции, это и есть наши Row group.
+If you save data to a Parquet file on disk using a conventional file system, you will find that instead of a single file, a directory is created containing an entire collection of files.
+Some of these are metadata files containing the schema and various auxiliary information, including a partial index that allows reading only the required data blocks during a query.
+The remaining parts, or partitions, are precisely our Row groups.
 
-Для интуитивного понимания будем считать Row groups набором файлов, объединённых общей информацией. Кстати, это разбиение используется HDFS для реализации data locality, когда каждая нода в 
-кластере может считывать те данные, которые непосредственно расположены у неё на диске. Более того, row group выступает единицей Map Reduce, и каждая map-reduce задача в Spark работает со 
-своей row-group. Поэтому worker обязан поместить группу строк в память, и при настройке размера группы надо учитывать минимальный объём памяти, выделяемый на задачу на самой слабой ноде, 
-иначе можно наткнуться на OOM.
+For an intuitive understanding, let's consider Row groups as a set of files united by common information. By the way, this partitioning is used by HDFS to achieve data locality, 
+where each node in the cluster can read the data located directly on its own disk. Furthermore, a row group acts as a single MapReduce unit, and each map-reduce task in Spark works with its own row group. 
+Because of this, a worker is required to load the row group into memory. When configuring the row group size, you must consider the minimum amount of memory allocated per task on the weakest node in the cluster; otherwise, you might run into an OOM (Out of Memory) error.
 
-Column chunk (разбиение на уровне колонок) — оптимизирует работу с диском (дисками). Если представить данные как таблицу, то они записываются не построчно, а по колонкам.
+Column chunk (partitioning at the column level) optimizes disk I/O. If you visualize the data as a table, it is written not row by row, but column by column.
 
-Представим таблицу:
+Here is a table:
 
 <p align="center">
 <img src="https://habrastorage.org/r/w1560/files/469/897/dae/469897dae11f4b159afd1f2bef6d5d6d.png" width="50%"></p>
 
-Тогда в текстовом файле, скажем, csv мы бы хранили данные на диске примерно так:
+In that case, in a text file, for example CSV, file we would store the data on disk something like this:
 
 <p align="center">
 <img src="https://habrastorage.org/files/b4f/916/6d3/b4f9166d324a41f395406d52feec5d7b.png" width="80%"></p>
 
-В случае с Parquet:
+In the case of Parquet:
 
 <p align="center">
 <img src="https://habrastorage.org/files/b45/9aa/ce8/b459aace83f5497aa7dbd37a9e50b493.png" width="80%"></p>
 
-Благодаря этому мы можем считывать только необходимые нам колонки.
+Thanks to this, we can read only the columns we actually need.
 
-Из всего многообразия колонок на деле аналитику в конкретный момент нужны лишь несколько, к тому же большинство колонок остается пустыми. Parquet в разы ускоряет процесс работы с данными,
-более того — подобное структурирование информации упрощает сжатие и кодирование данных за счёт их однородности и похожести.
-Каждая колонка делится на страницы (Pages), которые, в свою очередь, содержат метаинформацию и данные, закодированные по принципу архитектуры из проекта Dremel. 
-За счёт этого достигается довольно эффективное и быстрое кодирование. Кроме того, на данном уровне производится сжатие (если оно настроено). На данный момент доступны кодеки snappy, gzip, lzo.
+Out of the vast variety of columns, an analyst usually only needs a few at any given moment; moreover, the majority of the columns often remain empty. 
+Parquet speeds up data processing significantly. Furthermore, this way of structuring information simplifies data compression and encoding due to the homogeneity and similarity of the data.
+Each column is divided into pages (Pages), which, in turn, contain metadata and data encoded based on the architectural principles of the Dremel project. 
+This achieves highly efficient and fast encoding. In addition, compression is performed at this level (if configured). Currently, available codecs include Snappy, GZIP, and LZO.
 
-Есть ли подводные камни?
+Are there any pitfalls?
 
-За счёт “паркетной” организации данных сложно настроить их стриминг — если передавать данные, то полностью всё группу. Также, если вы утеряли метаинформацию или изменили контрольную 
-сумму для cтраницы данных, то вся страница будет потеряна (если для Column chank — то chank потерян, аналогично для row group). На каждом из уровней разбиения строятся контрольные суммы, 
-так что можно отключить их вычисления на уровне файловой системы для улучшения производительности.
+Due to the specific organization of Parquet data, it is difficult to set up streaming for it - if you transfer data, you have to transfer the entire group. Also, if you lose the metadata or alter the checksum for a data page, the entire page will be lost (if this happens to a column chunk, the chunk is lost, and similarly for a row group). Checksums are generated at each partitioning level, so you can disable their calculation at the file system level to improve performance.
 
-Выводы:
+Conclusion:
 
-Достоинства хранения данных в Parquet:
+Advantages of storing data in Parquet:
 
-- Несмотря на то, что они и созданы для hdfs, данные могут храниться и в других файловых системах, таких как GlusterFs или поверх NFS
-- По сути это просто файлы, а значит с ними легко работать, перемещать, бэкапить и реплицировать.
-- Колончатый вид позволяет значительно ускорить работу аналитика, если ему не нужны все колонки сразу.
-- Нативная поддержка в Spark из коробки обеспечивает возможность просто взять и сохранить файл в любимое хранилище.
-- Эффективное хранение с точки зрения занимаемого места.
-- Как показывает практика, именно этот способ обеспечивает самую быструю работу на чтение по сравнению с использованием других файловых форматов.
+- Even though it was created for HDFS, the data can also be stored in other file systems, such as GlusterFS or over NFS.
+- Essentially, these are just files, which means they are easy to work with, move, back up, and replicate.
+- The columnar format significantly speeds up an analyst's workflow if they don't need all the columns at once.
+- Native, out-of-the-box support in Spark allows you to easily take a file and save it to your preferred storage.
+- It provides highly efficient storage in terms of space consumption.
+- As practice shows, this particular format provides the fastest read performance compared to other file formats.
 
 
-Недостатки:
+Disadvantages:
 
-- Колончатый вид заставляет задумываться о схеме и типах данных.
-- Кроме как в Spark, Parquet не всегда обладает нативной поддержкой в других продуктах.
-- Не поддерживает изменение данных и эволюцию схемы. Конечно, Spark умеет мерджить схему, если у вас она меняется со временем (для этого надо указать специальную опцию при чтении), но, 
-чтобы что-то изменить в уже существующим файле, нельзя обойтись без перезаписи, разве что можно добавить новую колонку.
-- Не поддерживаются транзакции, так как это обычные файлы а не БД.
+- The columnar nature forces you to think carefully about the schema and data types upfront.
+- Outside of Spark, Parquet does not always have native support in other products.
+- It does not support data modification and schema evolution. Of course, Spark can merge schemas if yours changes over time (this requires specifying a special option when reading), but to change something in an already existing file, you cannot avoid rewriting it entirely, though it is possible to add a new column.
+- Transactions are not supported, as these are regular files and not a database.
 
-Note: статья в которой объясняется другими словами(https://www.bigdataschool.ru/wiki/parquet?ysclid=l87biclda9504593918)
+Note: an article that explains it in other words (https://www.bigdataschool.ru/wiki/parquet?ysclid=l87biclda9504593918) - **rus**
 
-От меня краткая сводка(если буду спрашивать на собесе, то что-то из этого): 
+Here's a brief summary from me (if I'm asked about this in the interview, I'll mention something along these lines): 
 
-- Во-первых parquet оптимизирован для работы со Spark
-- Parquet отлично сжимает данные(похуже ORC, но на втором месте) и я продемонстрирую это чуть позже в это уроке
-- Существует такая крутая вещь как Delta Lake, я затрону эту тему подробнее в более поздних уроках, а пока вам просто нужно знать что Delta Lake работает с Parquet файлами
-- Parquet хранит данные по колонкам, а это значит что если вам надо только x колонок, то вы считаете только x колонок, в отличие например от csv где придётся считать все колонки
-- С топика PySpark_Basics вы уже должны знать, что Parquet хранит мета-информацию, тем самым Spark не надо считывать все строки как в csv для забора типа колонок и прочих штук, он это 
-заберёт из мета-информации
-- Несмотря на то что в официальной документации написано что snappy кодирование эффектит на то, что файл можно считать будет считать только целиком(нельзя считать частично), 
-сжатие производится как раз на уровне pages, поэтому из самого parquet файла всё ещё можно считывать только то что нужно
+- First, Parquet is highly optimized for working with Spark.
+- Parquet compresses data exceptionally well (slightly worse than ORC, but a solid second place), and I will demonstrate this a bit later in this lesson.
+- There is a really cool technology called Delta Lake. I will cover this topic in more detail in later lessons, but for now, you just need to know that Delta Lake works closely with Parquet files.
+- Parquet stores data by columns. This means that if you only need x columns, you will only read those x columns—unlike CSV, for example, where you have to read every single column.
+- From the PySpark_Basics topic, you should already know that Parquet stores metadata. Because of this, Spark doesn't need to scan all the rows to infer column types and other details like it does with CSV; it simply retrieves that information from the metadata.
+- Even though some official documentation might suggest that Snappy compression means a file can only be read as a whole (i.e., it is not splittable), the compression in Parquet is actually performed at the page level. Therefore, you can still read exactly what you need from the Parquet file itself without scanning the entire file.
 
 ## ORC
 
-Я нашел только один нормальный источник где только про этот формат, а это значит что вот ссылка(https://www.bigdataschool.ru/wiki/orc?ysclid=l87d66i1a4726280864).
+I found only one reliable source that focuses exclusively on this format, so here's the link (https://www.bigdataschool.ru/wiki/orc?ysclid=l87d66i1a4726280864). - **rus**
 
-От меня краткая сводка:
+A quick summary from my side:
 
-- Сжимает лучше чем Parquet при чём солидно
-- Хранит данные по колонкам, а значит снова читаем только то что нам нужно
-- Хранит мета-информацию, а значит всё берется из него и не надо обходить весь файл
+- It compresses data better than Parquet, and quite significantly at that.
+- It stores data by columns, which again means we only read exactly what we need
+- It stores metadata, meaning all necessary information is retrieved from it without having to scan the entire file.
 
-И тут вопрос, а зачем тогда вообще Parquet, если ORC такой же так ещё и сжимает лучше? Ответ в этой статье(https://medium.com/@dhareshwarganesh/benchmarking-parquet-vs-orc-d52c39849aef).
+This raises the question: why use Parquet at all if ORC is essentially the same but offers better compression? The answer can be found in this article: (https://medium.com/@dhareshwarganesh/benchmarking-parquet-vs-orc-d52c39849aef).
 
-От себя могу сказать что Parquet изначально был для Spark, в то время как ORC для Hive(Spark умел читать вектора из Spark, ну а Hive из ORC). Сейчас же и то и то умеет читать
-вектора и оттуда и оттуда, поэтому различаются они следующим:
+From my own experience, I can add that Parquet was originally designed for Spark, whereas ORC was built for Hive (Spark used to read vectors natively from Parquet, while Hive read them from ORC). 
+Today, both engines can read vectors from either format, so the differences boil down to the following:
 
-- Parquet если ваши данные вложенные, ORC для плоских данных
-- Нужно больше сжатие? Тогда вам ORC. Нужна скорость(зачастую как раз она и нужна)? Тогда вам Parquet
-- Да Parquet не поддерживает ACID в отличие от ORC, но тут приходит Delta Lake который поддерживает и работает как раз с Parquet.
-- В 99% будет Parquet ибо с ним быстрее работать
+- Nested vs. Flat: Choose Parquet if your data is highly nested; choose ORC for flat data structures.
+- Compression vs. Speed: Need maximum compression? Go with ORC. Need speed (which is often the main priority)? Then Parquet is your choice.
+- ACID Transactions: It's true that Parquet does not natively support ACID transactions unlike ORC, but this is exactly where Delta Lake steps in—it provides ACID support and works specifically with Parquet files.
+- Industry Standard: In 99% of cases, you'll end up using Parquet simply because it's faster and more efficient to work with in the Spark ecosystem.
 
 ## CSV
 
-Факты:
+Facts:
 
-- Хранит данные по строкам(это значит что всегда все колонки считываются)
-- Нет сжатия(P.s. можно сжать через архиватор, например gz)
-- Нет мета-данных
+- Stores data by rows (which means that all columns are always read)
+- No compression (p.s. You can compress it using an archiver, such as gz)
+- No meta-data
 
 ## JSON
 
-До сих пор все рассматриваемые файлы были splittable: то есть в рамках Spark у нас есть много потоков готовых параллельно считывать данные. Если файл splittable, то
-тогда его будут считывать сразу несколько потоков. JSON же не является splittable, а значит он всегда считывается целиком, что может стать огромной проблемой(например JSON размером 1гб
-пойдёт в одну партицию т.к. его нельзя разделить, что может привести к spill-эффекту или ещё хуже OOM, подробнее об этом в следующих уроках). Ну а вообще JSON по сути ключ-значение.
-P.s. Вообще есть разработка(ток не помню от кого) расширения для JSON, который является splittable, но думаю вы его не встретите.
+Up to this point, all the files we've discussed have been splittable: meaning that within Spark, we have multiple threads ready to read data in parallel. 
+If a file is splittable, it will be read by several threads simultaneously.
+JSON, however, is not splittable, which means it must always be read in its entirety. 
+This can become a massive problem (for example, a 1GB JSON file will be loaded into a single partition because it cannot be divided, 
+which can lead to a spill effect or, even worse, an OOM error. We will cover this in more detail in upcoming lessons). Fundamentally, JSON is essentially a key-value structure.
+P.S. There actually is a developed extension for JSON (I don't remember by whom) that makes it splittable, but I doubt you will ever encounter it in practice.
 
 ## Avro
 
-Статейка(https://www.bigdataschool.ru/blog/kafka-big-data-apache-avro.html?ysclid=l87f4mn9lc361070957).
+Article - (https://www.bigdataschool.ru/blog/kafka-big-data-apache-avro.html?ysclid=l87f4mn9lc361070957). - **rus**
 
-Особо не знаю что сказать, кроме как что для него нужна особая Avro-схема без которой жить не может. Лучше чем JSON. Сам с ним не сталкивался, так что сразу перейду к следующему.
+I'm not really sure what to say, except that it requires a special Avro schema that it absolutely can't do without. It's better than JSON. I haven't worked with it myself, so I'll move right on to the next one.
 
-## Разница между Avro, Parquet и ORC
+## Difference between Avro, Parquet and ORC
 
-Прикреплю статью, чтобы ещё раз пройтись по основным типам файлов Big Data, плюс в конце в нём есть сравнение(https://habr.com/ru/company/vk/blog/504952/?ysclid=l87ddj9j44827638583).
+I'll attach an article to go over the main types of Big Data files again; it also includes a comparison at the end (https://habr.com/ru/company/vk/blog/504952/?ysclid=l87ddj9j44827638583). - **rus**
  
