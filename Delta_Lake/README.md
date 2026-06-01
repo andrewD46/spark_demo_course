@@ -3,19 +3,19 @@
 
 ## Description
 
-Здесь вы познакомитесь с уже нашумевшим Delta lake.
+Here you'll discover the already famous Delta Lake.
 
 
 ## Delta Lake concept
 
-Суть на самом деле проста: обычные файлы в data lake просто хранятся, нельзя делать merge, update, delete(т.к. они просто файлы и не поддерживают ACID). А на самом деле
-очень хотелось бы иметь такую возможность. Вот и пришёл delta lake. Суть его проста: храним паркет файлы, но к ним добавляем ещё и json файл, который будет хранить
-всю информацию о загрузках, какие данные актуальны и т.д. За счёт этого наши данные теперь совместимы с ACID правилами и мы можем делать через Delta API такие 
-операции как update, delete, merge, а также путешествовать во времени(да, delta lake позволяет посмотреть что вы грузили вчера, даже если данные были обновлены, т.к. он
-не удаляет файлы просто так, он помечает что они уже не актуальны вот и всё, но json всё ещё знает что они были для прошлой версии. Сами же файлы надо удалять с помощью
-vacuum). На этой штуки построены аж две архитектуры: Delta Lake from Databricks(bronze, silver, gold layer) и Lake Warehouse. Про них много информации так что можете 
-почитать.
+The core idea is actually quite simple: regular files in a data lake are just sitting there in storage. You cannot perform MERGE, UPDATE, or DELETE operations on them because they are simply files and lack ACID transaction support. But in reality, having that capability is incredibly desirable. Enter Delta Lake.
+Its underlying concept is straightforward: we store Parquet files, but we accompany them with a JSON file (transaction log) that records all information about data loads, which data is currently valid, and so on.
+Thanks to this, our data is now compliant with ACID properties. Using the Delta API, we can now execute operations like UPDATE, DELETE, and MERGE. We also get the ability to time travel (yes, Delta Lake allows you to look at the data you loaded yesterday, even if it has been updated since). This works because Delta Lake doesn't just delete files outright; it simply marks them as obsolete. The JSON log still retains the knowledge that those files belonged to a previous version. To physically remove the old files, you have to explicitly use the VACUUM command.
+
+Two major architectural concepts are built on top of this technology:
+- The Medallion Architecture (by Databricks): Organizing data logically into Bronze, Silver, and Gold layers.
+- The Data Lakehouse: Combining the best elements of data lakes and data warehouses.
 
 ## Delta Lake API
 
-Ссылка: https://docs.databricks.com/delta/index.html. Прочитать всё что во вкладке Delta Lake.
+Link: https://docs.databricks.com/delta/index.html. Read everything in tab Delta Lake.
