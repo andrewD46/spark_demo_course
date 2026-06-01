@@ -21,14 +21,14 @@ findspark.init()
 ```
 in your code.
 
-- transformations vs actions (https://www.bigdataschool.ru/blog/transformations-and-actions-in-spark.html?ysclid=l84yx1b0bf998273623)
-- sparksession (https://sparkbyexamples.com/pyspark/pyspark-what-is-sparksession/)
+- transformations vs actions (https://medium.com/@roshmitadey/pyspark-transformations-v-s-actions-797fc8ad16ea)
+- sparksession (https://medium.com/@DataWithSantosh/understanding-sparksession-and-sparkcontext-in-pyspark-e74ecc688886)
 - local[*] (https://stackoverflow.com/questions/32356143/what-does-setmaster-local-mean-in-spark)
 - read and write (https://www.linkedin.com/posts/activity-6972796904187260928-xSLs?utm_source=share&utm_medium=member_desktop)
 - read csv (https://sparkbyexamples.com/pyspark/pyspark-read-csv-file-into-dataframe/)
 - print Schema (https://sparkbyexamples.com/pyspark/pyspark-find-datatype-column-names-of-dataframe/)
 - creating schema (https://sparkbyexamples.com/pyspark/pyspark-structtype-and-structfield/)
-- difference between inferschema and pre-defined schema (https://www.learntospark.com/2020/10/spark-optimization-technique-inferschema.html)
+- difference between inferschema and pre-defined schema (https://tsaiprabhanj.medium.com/spark-performance-inferschema-vs-defined-schema-bab98341524)
 - withColumn (https://sparkbyexamples.com/pyspark/pyspark-withcolumn/)
 - select (https://sparkbyexamples.com/pyspark/select-columns-from-pyspark-dataframe/)
 - distinct, dropDuplicates (https://sparkbyexamples.com/pyspark/pyspark-distinct-to-drop-duplicates/)
