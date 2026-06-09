@@ -3,35 +3,34 @@
 
 ## Description
 
-Здесь будут вопросы, которые могу вам попасться на собесе.
+Here are some questions you might be asked during interview.
 
  
 ## Questions
 
-1) Что такое Spark
-2) Из первого вопроса вытекает что такое Map Reduce и в чём его суть 
-3) Какие этапы есть в Map Reduce
-4) Разница между Spark и Hadoop
-5) RDD, DF, Dataset - разнциа между ними(в рамках PySpark только RDD и DF)
-6) Что такое DAG и как это связано со спарком
-7) Разница между действиями и трансформациями
-8) Разница между узкими и широкими трансформациями
-9) Что такое job, stage, task
-10) Виды джойнов(не лефт, райт и иннер, а именно стратегий джойна в спарке)
-11) Когда какой джойн юзать
-11) Почему нельзя писать бездумно collect и прочие такие штуки
-12) Разница между repartion и coalesce(просто ответа что coalesce ток уменьшает а repartition может и увеличивать мало, мало даже если человек скажет что repartition это 
-shuffle всегда). Логику того как под капотом это работает. Плюсы и минусы
-13) как работает partitionBy
-14) PartitionBy в комбинации с repartition или coalesce
-15) Как уменьшить количество shuffle
-16) Оптимизации которые юзает каталист
-17) Как решить проблему Data Skew и вообще что это такое
-18) UDF и почему PySpark UDF это плохо. Чем заменить PySpark UDF
-19) Delta Lake и почему он
-20) Менеджмент памяти на уровне JVM+overhead
-21) Менеджмент памяти на полном уровне(если это PySpark то там не ток JVM и overhead)
-22) Parquet - что это(рассказать всё что знаешь)
-23) Нюансы при чтении JSON
-24) Нюансы при чтении CSV
+1) What is Spark
+2) Flowing from the first question, what is MapReduce and what is its core concept?
+3) What stages are there in MapReduce?
+4) The difference between Spark and Hadoop
+5) RDD, DF, Dataset - the difference between them (in the context of PySpark, only RDD and DF)
+6) What is a DAG and how is it related to Spark?
+7) The difference between actions and transformations
+8) The difference between narrow and wide transformations
+9) What are a job, stage, and task?
+10) Types of joins (not left, right, and inner, but specifically join strategies in Spark)
+11) When to use which join strategy
+11) Why you shouldn't mindlessly write collect() and other things like that
+12) The difference between repartition and coalesce (simply answering that coalesce only decreases partitions while repartition can also increase them is not enough; it's not even enough if a person says that repartition always triggers a shuffle). Explain the logic of how it works under the hood. Pros and cons.
+13) How partitionBy works
+14) partitionBy in combination with repartition or coalesce
+15) How to reduce the amount of shuffle
+16) Optimizations used by Catalyst
+17) How to solve the Data Skew problem, and what it is in general
+18) UDFs and why PySpark UDFs are bad. What to replace PySpark UDFs with
+19) Delta Lake and why choose it
+20) Memory management at the JVM + overhead level
+21) Memory management at the full level (if it's PySpark, it involves more than just JVM and overhead)
+22) Parquet - what it is (tell everything you know)
+23) Nuances when reading JSON
+24) Nuances when reading CSV
 25) Broadcast variables
