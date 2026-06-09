@@ -6,7 +6,7 @@
 Here you'll learn about various topics that aren't all that important (though they actually have a huge impact on performance, they're much harder to manage), 
 but I simply can't leave them out, because they might come up in job interviews (especially in very tough ones).
 
-## Spill эффект
+## Spill effect
 
 Article: https://selectfrom.dev/spark-performance-tuning-spill-7318363e18cb.
 
