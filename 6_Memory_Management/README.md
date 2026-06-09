@@ -3,17 +3,16 @@
 
 ## Description
 
-Здесь вы познакомитесь с тем как менеджить память в спарке, ну и вообще как она устроена.
+Here you'll learn how to manage memory in Spark, as well as how it works in general.
 
 
 ## Spark Memory
 
-На самом деле, разработчики спарка очень крутые ребята и дефолтные конфиги которые они предоставляют для менеджмента памяти вполне себе крутые и их зачастую трогать
-не надо. Тем не менее ситуация меняется, и вы даже можете найти пару статеек на хабре где люди рассказывали как добивались неимоверной производительности от своих 
-кластеров в том числе и за счёт менеджмента памяти. Поэтому скажем так: для обывателя вещь бесполезная, но на собесе спросить могут, поэтому приступим.
+To be honest, the Spark developers are really great at what they do, and the default memory management configs they provide are quite solid - most of the time, you don't even need to touch them.
+However, every situation is different. You can even find a few articles on Habr where people talk about squeezing unbelievable performance out of their clusters, partly by tuning memory management. 
+So, let's put it this way: it might seem useless to the average user, but they can definitely ask you about it in an interview. So, let's dive in.
 
-Вообще рассказать лучше чем в этой статье я не смогу, поэтому удачи при прочтении: 
-https://www.bigdataschool.ru/blog/jvm-spark-memory-types-and-configurations.html?ysclid=l8zpaz0ekr494721682.
+Article about Spark Memory Management and its types - https://medium.com/@vtrkayalrajan/spark-memory-management-and-its-types-425af52d7c15
 
-Вот ещё одна статья, которая только про память в JVM(в ней чуть более подробно что хранится именно в сегментах памяти JVM):
+Here's another article that focuses solely on memory in the JVM (it goes into a bit more detail about what exactly is stored in the JVM's memory segments):
 https://medium.com/analytics-vidhya/apache-spark-memory-management-49682ded3d42.
