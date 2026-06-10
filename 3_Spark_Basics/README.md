@@ -11,9 +11,8 @@ Spark, Hadoop, Java JDK.
 
 ## Теория о кластере
 
-Для того чтобы можно было приступить к оптимизациям и устройству самого Spark внутри, необходимо для начала ознакомиться с 
-концепциями распределенной вычислительной системы, которой Spark и является.
-По сути в устройстве системы лежит 6 понятий:
+Before we can dive into optimizations and the internal workings of Spark itself, we first need to get familiar with the concepts of a distributed computing system - which is exactly what Spark is.
+Essentially, the system's architecture rests on 6 core concepts:
 
 - Executor
 - Worker
@@ -22,61 +21,64 @@ Spark, Hadoop, Java JDK.
 - Cluster Manager
 - Cluster 
 
-Вот пример всей системы на картинке ниже.
+Here is an example of the entire system in the image below.
 
 <p align="center">
 <img src="https://miro.medium.com/max/3334/1*9rdJjMwXXaBXDddxRLPFlw.jpeg" width="80%"></p>
 
-Обо всём по порядку.
+Let's take it one step at a time.
 
 ### Cluster
 
-Кластером называют все вычислительные средства(будь то сервера или просто отдельно стоящие компьютеры), входящие в систему. 
-A cluster is a set of tightly or loosely coupled computers connected through LAN (Local Area Network). The computers in the cluster are usually called nodes. 
-Each node in the cluster can have a separate hardware and Operating System or can share the same among them. Resource (Node) management and task execution in the nodes 
-is controlled by a software called Cluster Manager.
+A cluster refers to all computing resources (whether they are servers or simply standalone computers) that make up the system. 
+A cluster is a set of tightly or loosely coupled computers connected through a LAN (Local Area Network). 
+The computers in the cluster are usually called nodes. Each node in the cluster can have separate hardware and its own Operating System, or can share them. 
+Resource (node) management and task execution across the nodes are controlled by a software called a Cluster Manager.
 
 ### Worker
 
-Компьютер (сервер) ресурсы которого будут использоваться для работы Spark. Например в том же databricks при создании кластера вы видете выбор worker-node и после выбора
-можно установить их количество. По сути машины объединенные по сети для совместной работы.
+A computer (or server) whose resources will be utilized to run Spark. 
+For example, in Databricks, when creating a cluster, you see an option to select a worker node, and after selecting it, you can specify their quantity. 
+Essentially, these are machines connected over a network to work collaboratively.
 
 ### Executor
 
-Executor это ничто иное как процесс ранящийся в JVM(Java Virtual Machine). На каждом worker может быть несколько executors, о том как выбрать количество будет рассмотренно ниже.
-Сам worker как вы понимаете ничего не делает, делают всю работу executors которые испольуют ресурсы worker. P.s. По сути worker железяка с ПО, а executor процесс выполняющий работу 
-используя ресурсы железяки.
+An executor is nothing more than a process running within a JVM (Java Virtual Machine). 
+There can be multiple executors on each worker; how to choose the right number will be discussed below. 
+The worker itself, as you understand, does not actually execute tasks; all the work is done by the executors, which utilize the worker's resources.
+
+P.S. Essentially, a worker is a piece of hardware equipped with software, while an executor is a process that performs the work using that hardware's resources.
 
 ### Master
 
-Машина с которой отправляется код на выполнение. По сути место где вы пишите код, ничего более.
+The machine from which the code is submitted for execution. Essentially, it is the place where you write the code, nothing more.
 
 ### Driver
 
-Driver это тоже процесс, который в зависимости от типа запуска кода может быть как на машине Master(client mode), так и на одной из worker-node(cluster mode).
-Очевидно что продакшен cluster mode, ибо driver постоянно общается с executors, и если вы сидите в Минске а сервер в Москве то задержка будет больше чем время выполнения.
+The Driver is also a process, which, depending on the deployment mode, can run either on the Master machine (client mode) or on one of the worker nodes (cluster mode).
+Obviously, cluster mode is used for production, because the driver constantly communicates with the executors, and if you are sitting in Minsk while the server is in Moscow, the network latency will be greater than the execution time itself.
 
-В driver живет main() метод, который и создаёт spark-context(Spark-session начиная с dataframe API), который и является логическим центром Spark. В его обязанности входит:
+The main() method resides in the driver, which creates the SparkContext (SparkSession starting with the DataFrame API), acting as the logical center of Spark. Its responsibilities include:
 
-- Нарезает код на  job, stage, task(о том что это чуть ниже) 
-- Создает Logical Plan, Physical Plan и т.д.(тоже чуть ниже объяснение)
-- Координирует с cluster manager для отправки задач на executors для их выполнения 
-- Отслеживает прогресс выполнения(что, где и на каком этапе ранится)
+- Slicing the code into jobs, stages, and tasks (more on what these are below).
+- Creating the Logical Plan, Physical Plan, etc. (explanation also below).
+- Coordinating with the cluster manager to dispatch tasks to the executors for execution.
+- Tracking execution progress (monitoring what is running, where, and at what stage).
 
 ### Cluster manager
 
-Существует несколько видов Cluster Manager:
+There are several types of Cluster Managers:
 
-- Spark Standalone Cluster Manager. Самый обычный и поставляется с самим спарком. Не требует настройки))
-- Apache Mesos. Чуть сложнее и круче, но если предыдущий используется в тестовых целях, то этот я вообще не видел чтобы юзался.
-- Hadoop YARN. До прихода на рынок k8s был одним из лучших решений, однако из-за особенностей устройства сейчас юзается реже, например в облачных решениях(тот же AWS EMR).
-- k8s. Самый лучший и чаще всего будет он. Об устройстве k8s можно почитать в интернете, я лишь скажу что в рамках спарка один executor=один pod. Это добавляет дополнительную гибкость.
+- Spark Standalone Cluster Manager: The most basic option, which comes bundled with Spark itself. It requires essentially no setup))
+- Apache Mesos: A bit more complex and powerful, but while the Standalone manager is used for testing purposes, I have honestly never seen Mesos used in practice.
+- Hadoop YARN: Before Kubernetes (k8s) entered the market, this was one of the best solutions. However, due to its architectural specifics, it is used less frequently nowadays - for example, mostly in managed cloud solutions (like AWS EMR).
+- Kubernetes (k8s): The best option, and the one you will encounter most often. You can read up on how k8s works online; I will just mention that in the context of Spark, one executor = one pod. This adds an extra layer of flexibility.
 
-Вообще Cluster Manager отвечает за выделяемые ресурсы. Если мы выполняем задачу в cluster режиме, то сначала это ПО(Помните cluster manager это ПО) поднимает driver, driver говорит
-мол надо столько executors с такими-то ресурсами и кидает запрос на cluster manager, тот же идёт и поднимает всё что нужно. В Client режиме driver поднимается сам,
-но вот executors всё ещё лежат на плечах cluster manager.
+In general, the Cluster Manager is responsible for allocating resources. If we run a task in cluster mode, this software (remember, the cluster manager is a piece of software) first spins up the driver. 
+The driver then says, "I need this many executors with these specific resources," and sends a request to the cluster manager. The cluster manager then goes and spins up everything requested.
+In client mode, the driver is spun up locally on your machine, but provisioning the executors still falls entirely on the shoulders of the cluster manager.
 
-Вот красивый пример как это всё работает:
+Here's a great example of how it all works:
 
 Working Process
 
@@ -95,155 +97,142 @@ spark-submit –master <Spark master URL> –executor-memory 2g –executor-core
 10) Finally, when all Task is completed, the main() method running in the Driver exits, i.e. main() method invokes sparkContext.stop().
 11) Finally, Spark releases all the resources from the Cluster Manager.
 
-## Практика кластер(ну и теория)
+## Cluster practice (and theory)
 
-Сейчас мы создадим свой кластер на своей машине.
+Now we're going to set up our own cluster on our machine.
 
-Заходим в cmd(если конечно вы настроили Spark как в моём гайде) и прям там пишем 
+Open the cmd (assuming you've set up Spark as described in my guide) and type the following right there 
 ```
 spark-class org.apache.spark.deploy.master.Master
 ```
-Это ничто иное как объявление master для вашего кластера. Вообще Spark предоставляет широкий спектр скриптов для автоматического подъема всего добра, но к сожалению они не работают
-на Windows(ток Линуха). Поэтому мы будем делать всё ручками.
-После выполнения кода выше, должен быть такой вывод
+This is nothing more than declaring the master for your cluster. In general, Spark provides a wide range of scripts to automatically spin up all this stuff, but unfortunately, they don't work on Windows (Linux only). Therefore, we will be doing everything by hand.
+After executing the code above, you should see the following output:
 
 ![image](https://user-images.githubusercontent.com/113685144/192796311-57f796a6-c35e-4aac-9ee3-d9467c5a2da0.png)
 
-Теперь вы можете взять MasterUI и зайти на эту страницу в интернете. Это ничто иное как UI где можно найти всё о вашем кластере, из чего он состоит, какую задачу выполняет и т.д.
-Используется для мониторинга работы вашего кластера в real time. Сам же master поднят по адресу который указан в этой строке Starting Spark master at spark://...
+Now you can take the MasterUI URL and open it in your web browser. This is nothing more than a UI where you can find everything about your cluster: what it consists of, what tasks it is running, and so on. It is used to monitor your cluster's operations in real-time. As for the master itself, it is spun up at the address specified in this line: Starting Spark master at spark://...
 
-Далее необходимо поднять например два worker. 
-Откройте новое cmd окно и впишите туда следующее
+Next, we need to spin up, for example, two workers.
+Open a new CMD window and enter the following:
 ```
 spark-class org.apache.spark.deploy.worker.Worker spark://<адрес мастера> --cores 2 --memory 3g
 ```
-Это создат worker на вашем компьютере с 2 ядрами и 3гб оперативки. Spark считает логические ядра, то есть например у меня 6 ядер по 2 потока, то есть для спарка это 12 ядер. 
-Чтобы проверить что он создался, зайдите в UI и там будет Workers(1). Note: не меняйте сеть когда создаёте все это, ибо очевидно что адреса будут меняться.
-Создадим ещё одного Worker но уже с 3 ядрами и 4g памяти.
+This will create a worker on your computer with 2 cores and 3GB of RAM. Spark counts logical cores; for example, I have 6 cores with 2 threads each, which means 12 cores as far as Spark is concerned.
+To verify that it was successfully created, check the UI and you will see Workers (1).
+Note: Do not switch networks while setting all of this up, because the addresses will obviously change.
+Let's create another worker, but this time with 3 cores and 4GB of memory.
+
 ```
 spark-class org.apache.spark.deploy.worker.Worker spark://<адрес мастера> --cores 3 --memory 4g
 ```
-В spark UI должен появиться второй Worker.
-Теперь ваш кластер готов к боевым действиям.
+A second Worker should appear in Spark UI.
+Your cluster is now ready for action.
 
-## Немного(очень много) теории про job, stage, task, оптимизатор, таблицы и виды оптимизаций в оптимизаторе
+##  A little (actually, a lot) of theory about jobs, stages, tasks, the optimizer, tables, and types of optimizations in the optimizer
 
-Прежде чем приступить к запуску кода, необходимо для начала разобраться как всё работает на этом кластере.
-В этих статьях вы познакомитесь в вышеупомянутыми job, stage, task.
-Статьи(первая вводная, вторая более серьезная которая покрывает даже больше аспектов, но всё же советую сначала первая(ибо там есть job и application), а потом вторая):
+Before you start running the code, you first need to understand how everything works on this cluster.
+In these articles, you’ll learn about the aforementioned jobs, stages, and tasks.
 
-- https://www.hadoopinrealworld.com/what-are-applications-jobs-stages-and-tasks-in-spark/ 
-- https://habr.com/ru/company/neoflex/blog/578654/?ysclid=l8ls6p9kjq379024568
+- https://medium.com/@diehardankush/what-are-job-stage-and-task-in-apache-spark-2fc0d326c15f\
+- https://blog.dataengineerthings.org/deep-dive-into-spark-jobs-and-stages-481ecf1c9b62
 
-Т.к. во второй статье затронулся оптимизатор, то почему бы с ним не разобраться до конца.
-Статья про оптимизатор в Spark: https://spark-school.ru/blogs/how-catalyst-works/?ysclid=l8lsfmfe4b334214965.
+An article about the optimizer in Spark: https://g1thubhub.github.io/catalyst.html
 
-Уже не раз упоминались логические оптимизации, которые применяет оптимизатор когда из логического плана получает оптимизированный логический.
-Все эти оптимизации называются rule-based optimizations. Что же за они пришло время узнать:
+We have already mentioned the logical optimizations applied by the optimizer when converting a logical plan into an optimized logical plan several times. 
+All of these optimizations are known as rule-based optimizations. Now, it's time to find out exactly what they are:
 
-- Predicate pushdown — строки. Иными словами, если вы напишите код, в котором первой строкой считаете данные а потом где-то в конце отфильтруете по ключу(например только True 
-флаг), то Spark сделает этот отбор как можно ближе к считываемому файлу(если конечно это возможно) чтобы уменьшить как можно раньше количество строк. Плюс ко всему,
-этот отбор строк может вообще происходить на этапе считывания из файла(то есть прям когда он считывает данные, строки будут уже отсеиваться).
-- Projection Pushdown — колонки. То же самое, только с полями. Например вспомним тот же parquet позволяющий считывать только те колонки которые мы используем.
-- Partition pruning - вообще, эта штука только когда Spark использует Hive metastore db, где хранит всякую мета-информацию о таблицах. Если речь про databricks то там 
-Spark использует эту бд, а вот если речь про обычный локальный Spark то он юзает дефолтную бд(если хочешь Hive metastore нужно настроить это дополнительно). Эта штука используется
-только на таблицах используя sparksql, то есть к обычным датафреймам не применима(ну или я чего-то не знаю). 
-Вот статья где в начале есть объяснение сути partitoning pruning: http://www.openkb.info/2021/03/spark-tuning-dynamic-partition-pruning.html.
-Если вкратце, то суть в том что когда Join по условию, то можно сначала не джойнить обе таблицы, а сделать подзапрос который отсортирует одну таблицу, потом результат значений
-распространить на все executors и там отфильтровать вторую таблицу, и только потом уже делать джойн из отфильтрованных таблиц. Работает круто и всё такое, только вот сразу же и 
-всплывает мысль почему это ток с таблицами: а потому что как такое написать в синтаксисе dataframe API? Никак, сначала ты фильтруешь таблицу одну, потом джойнишь обе. 
-Таблицами в данном случае выступают реально таблицы, сейчас будет длинная и на самом деле тяжелая часть, так что будьте внимательны.
-Таблицы в Spark, не такие как в БД, ибо они хранятся в файлах. Поэтому правила ACID над ними не работают, что ещё хуже, т.к. это просто файлы то с ними нельзя делать
-update, delete, ну и самое главное merge. Да вы можете писать над ними sql запросы как в обычную БД как раз за счёт Hive metastore db или же за счёт дефолтного метастора Spark,
-но к сожалению или к счастью это всё ещё файлы. И тут на сцену выходит преславутый deltalake с его delta table. По сути те же файлы, но уже гораздо круче и прикольнее, ибо
-на них теперь распространяется ACID, да ещё и через Delta API можно делать delete, update, merge, ну и хранить историю(позже вы узнаете всё более подробно про delta lake). Так вот,
-про таблицы ещё нужно знать что они бывают managed и external. Суть в том что в Spark ещё есть Spark warehouse(Hive warehouse). Это такое хранилище, где Spark хранит managed таблицы.
+- Predicate pushdown — rows. In other words, if you write code where the first line reads the data and then somewhere near the end you filter by a key (for example, keeping only a True flag), Spark will perform this filtering as close to the data source file as possible (if feasible, of course) to reduce the number of rows as early as possible. On top of that, this row filtering can happen right at the file-reading stage (meaning that as it reads the data, rows are already being filtered out).
+- Projection pushdown — columns. The exact same thing, but with fields. For example, recall Parquet, which allows reading only the specific columns that we actually use.
+- Partition pruning — generally speaking, this applies when Spark uses a Hive Metastore DB to store all kinds of metadata about tables. If we are talking about Databricks, Spark uses this DB, but if it's regular local Spark, it uses a default embedded DB (if you want a Hive Metastore, you need to configure it additionally). This feature is only used on tables via Spark SQL, meaning it is not applicable to regular DataFrames (unless I'm missing something).
+Here is an article that begins with an explanation of the concept of partitioning pruning: http://www.openkb.info/2021/03/spark-tuning-dynamic-partition-pruning.html.
 
-Разница в следующем:
+In short, the core idea is that when performing a conditional join, instead of joining both tables immediately, you can first run a subquery that filters one table, then broadcast the resulting values to all executors to filter the second table there, and only after that perform the join on the already filtered tables. It works great and all, but it immediately makes you wonder why this only works with tables: because how would you write something like that using the DataFrame API syntax? You can't; you would manually filter one table first and then join them both.
+Tables in this case refer to actual tables. What follows is a long and rather heavy section, so pay close attention.
 
-- managed таблица - это таблица которая полностью управляется спарком, а именно спарк хранит не только мета-информацию в Hive metastore, но ещё и сами файлы этой таблицы
-в Spark warehouse. Удалите таблицу и удалите не только мета-информацию, но ещё и сами данные. Создаётся так: 
+Tables in Spark are not like tables in a traditional database because they are stored as files. Therefore, ACID principles do not apply to them. 
+Even worse, since these are just files, you cannot perform UPDATE, DELETE, or - most importantly - MERGE operations on them. Yes, you can run SQL queries against them just like in a regular database, thanks to the Hive Metastore DB or Spark's default metastore, but for better or worse, they are still just files.
+
+And this is where the well-known Delta Lake comes into play with its Delta tables. Essentially, they are the same files, but way cooler and more powerful, because they are now fully ACID-compliant. Plus, using the Delta API, you can perform DELETE, UPDATE, and MERGE operations, as well as maintain a version history (you will learn about Delta Lake in much greater detail later).
+Now, another thing you need to know about tables is that they can be either managed or external. The point is that Spark also includes a Spark Warehouse (Hive Warehouse). This is the storage location where Spark keeps its managed tables.
+
+The difference is as follows:
+
+Managed table - a table that is fully managed by Spark. Specifically, Spark stores not only the metadata in the Hive Metastore, but also the actual data files of this table within the Spark Warehouse. If you delete the table, you delete both the metadata and the actual data itself. It is created like this:
 
 spark.sql("CREATE TABLE employee (name STRING, emp_id INT,salary INT, joining_date STRING)")
 
-или так 
+or like this 
 
 df= spark.read.format("csv").option("inferSchema","true").load("/FileStore/tables/Order.csv")
 
 df.write.saveAsTable("OrderTable").
 
-- external таблица - это таблица, данные которой(файлы) хранятся вне Spark warehouse, Spark лишь знает что она хранится там-то и знает о ней мета-информацию. Удалите такую таблицу,
-и спарк лишь удалит мета-информацию, а сама таблица будет жить. Создаётся так: 
+External table - a table whose data (files) is stored outside the Spark Warehouse. Spark only knows that it is stored at a specific location and maintains its metadata. If you delete such a table, Spark will only remove the metadata, while the actual data files will remain intact. It is created like this:
 
 spark.sql("""CREATE TABLE OrderTable(name STRING, address STRING, salary INT) USING csv OPTIONS (PATH '/FileStore/tables/Order.csv')""").
 
-В основном таблицы юзаются только с databricks где есть под капотом Hive и своё hdfs хранилище, ну а какую именно таблицу юзать это уже прихоть архитектора на проекте.
+For the most part, tables are only used with Databricks, which has Hive and its own HDFS storage under the hood, but which specific table type to use is up to the project architect's preference.
 
-К сожалению это не вся теория. Далее нас ждут оптимизации которые оптимизатор юзает выбирая физический план. Называются они cost-based optimizations
-Ну тут на самом деле можно разойтись на славу так, но т.к. это лучше показывать вместе с практикой, приведу лишь пример: У вас есть join. 
-В спарке есть 5 видов джойн(обязательно их затронем но не сегодня) и спарк в зависимости от настройек которые вы ему задали(spark.sql.autobroadcastjointhreshold 
-например) посмотрит на статистику входных данных и примет решение какой именно из 5 джойнов ему юзать. Какие именно оптимизации спарк делает на этом 
-этапе вы узнаете в следующих темах, тут лишь скажу ещё что существует такая вещь как AQE, которая основывается не на входных данных, а прям на рантайме смотрит на
-статистику и решает что лучше. То есть изначально план может быть один, но например потом на рантайме когда уже вы отфильтровали и что-то преобразовали, статистика же может
-измениться и старый план станет уже не актуален. Тут и приходит на помощь AQE который собирает статистику после каждого shuffle и проверяет надо ли поменять план выполнения.
-Появилось это чудо со Spark 3.0 и активно юзается. Также на выбор физическего плана влияет CBO(cost-based optimizations), работает только на таблицы(тобишь на
-sparksql), для dataframe или RDD вещь бесполезная очевидно, но для таблиц очень помогает. Его надо включить и самому руками написать в коде чтобы Spark посчитал статистику о таблицах, 
-только тогда CBO заработает. Подробнее про AQE и CBO и какие именно оптимизации они делают вы узнаете чуть позже, когда узнаете в принципе что можно улучшать в спарке и зачем это вообще
-нужно.
+Unfortunately, that's not all the theory. Next up are the optimizations that the optimizer uses when choosing a physical plan. These are called cost-based optimizations. We could really go down a rabbit hole here, but since this is best shown alongside practical examples, let me just give you one example: you have a join. Spark has 5 types of joins (we will definitely cover them, just not today), and depending on the settings you configured (like spark.sql.autoBroadcastJoinThreshold, for instance), Spark will look at the input data statistics and decide which of the 5 joins to use.
+
+You will learn exactly what optimizations Spark performs at this stage in future topics. For now, I'll just mention that there is also something called AQE (Adaptive Query Execution), which doesn't just rely on initial input data; instead, it looks at runtime statistics to decide what's best. In other words, the initial plan might look one way, but later at runtime - after you've already filtered and transformed something - the statistics might change, making the old plan suboptimal. This is where AQE comes to the rescue: it collects statistics after each shuffle and checks whether it needs to dynamically adjust the execution plan. This amazing feature arrived with Spark 3.0 and is actively used.
+
+The choice of a physical plan is also influenced by CBO (Cost-Based Optimization). It only works on tables (meaning Spark SQL); it's obviously useless for raw DataFrames or RDDs, but it helps tremendously with tables. You have to enable it and manually write code to trigger Spark to compute table statistics; only then will CBO kick in. You will learn more about AQE and CBO, as well as the specific optimizations they perform, a bit later—once you understand what can actually be optimized in Spark and why it matters in the first place.
 
 
 ## DAG, narrow wide transformations
 
-узкие, широки трансформации(да они уже встречались в одной статье, надо закрепить): https://sauravomar01.medium.com/wide-vs-narrow-dependencies-in-apache-spark-2cd33bf7ed7d
+Narrow and Wide Transformations (yes, they already appeared in a previous article, but we need to reinforce this concept): https://sauravomar01.medium.com/wide-vs-narrow-dependencies-in-apache-spark-2cd33bf7ed7d
 
-DAG - видели картинку из прошлой статьи RDD Lineage? Так вот это оно самое. Направленный ациклический граф, который показывает путь ваших RDD от начала до конца, а именно
-какие операции с ними происходят и т.д. Статейка: https://www.tutorialkart.com/apache-spark/dag-and-physical-execution-plan/.
+DAG — remember the image from the previous article on RDD Lineage? Well, this is exactly what it is. A Directed Acyclic Graph shows the journey of your RDDs from start to finish, specifically detailing which operations are performed on them, etc. Article: https://www.tutorialkart.com/apache-spark/dag-and-physical-execution-plan/.
 
-Ну и как читать план запроса: https://blog.rockthejvm.com/reading-query-plans/.
-Есть ещё одна статья, как читать план запроса(оч советую, реально супер крутая но посложнее): https://towardsdatascience.com/mastering-query-plans-in-spark-3-0-f4c334663aa4.
+And lastly, how to read a query plan: https://blog.rockthejvm.com/reading-query-plans/.
 
 
-## Запуск кода на кластере
+## Running code on a cluster
 
-Перед тем как посмотреть на ваш кластер в бою и посмотреть на всякие метрики в Spark UI, вот статья про то что вообще можно найти в Spark UI: 
-https://spark.apache.org/docs/3.0.0-preview/web-ui.html#:~:text=Apache%20Spark%20provides%20a%20suite,Jobs%20detail.
-Вот небольшое пояснение на cache и persist, которые встретятся в статье: https://stackoverflow.com/questions/26870537/what-is-the-difference-between-cache-and-persist. 
-Также необходимо посмотреть как запускается spark application: https://sparkbyexamples.com/spark/spark-submit-command/.
+Before you take a look at your cluster in action and check out the various metrics in the Spark UI, here’s an article about what you can actually find in the Spark UI: 
+https://spark.apache.org/docs/latest/web-ui.html
 
-Т.к. аналитика в Spark UI доступна только в риал лайф, то необходимо настроить папку для хранения истории этой аналитики, чтобы потом можно было смотреть. Для этого вам надо
-создать в этой директории(3_Spark_Basics) папку for_history. Чтобы там хранилась истории и после вы могли смотреть всю статистику в History Server вам необходимо вписать эти строки:
+Here's a brief explanation of cache and persist: https://stackoverflow.com/questions/26870537/what-is-the-difference-between-cache-and-persist. 
+You should also check how the Spark application is launched: https://sparkbyexamples.com/spark/spark-submit-command/.
+
+Since analytics in the Spark UI are only available in real-time, you need to configure a folder to store the history of these analytics so you can view them later. 
+To do this, you need to create a folder named for_history inside this directory (3_Spark_Basics). 
+To ensure the history is saved there and you can view all the statistics in the History Server later, you need to add these lines:
 
 ```
 spark.eventLog.enabled true
 spark.eventLog.dir file:///C:/Users/stepa/Desktop/spark_demo/3_Spark_Basics/for_history
 spark.history.fs.logDirectory file:///C:/Users/stepa/Desktop/spark_demo/3_Spark_Basics/for_history
 ```
-со своим путём разумеется на папку. Вписать их необходимо в файл spark-defaults.conf который находится по этому пути ...\spark-3.1.3-bin-hadoop2.7\conf. Также необходимо
-удалить .template из имени spark-defaults.conf.template(если вы не видите template то включите вид->расширения имён файлов).
-Также необходимо запустить history server. Для этого открываем cmd и там пишем:
+
+using your own specific path to the folder, of course. You need to enter these lines into the spark-defaults.conf file, which is located at this path: ...\spark-3.1.3-bin-hadoop2.7\conf
+Note: You will first need to remove the .template extension from the filename spark-defaults.conf.template. If you cannot see the extension, make sure to enable View -> File name extensions in your Windows File Explorer.
+Once the configuration is saved, you need to start the History Server. To do this, open a new CMD window and run:
 
 ```
 spark-class org.apache.spark.deploy.history.HistoryServer
 ```
 
-Эта команда запустит сервер, который будет читать историю отработанных приложений, адрес сервера будет указан после выполнения команды(так же как и было с адресом мастера). 
-Поэтому после завершения выполнения приложения необходимо идти по тому адресу который будет указан при запуске history server и смотреть на ваше приложение.
+This command will start the server that reads the history of completed applications. The server address will be displayed after the command executes (just like it was with the master address). Therefore, once your application finishes running, you need to go to the address specified during the history server startup to inspect your application.
 
-Для того чтобы Spark видел Python 100%, переименуйте файл spark-env.sh.template в spark-env.cmd и добавьте туда строки ниже
-(файл лежит по этому пути ...\spark-3.1.3-bin-hadoop2.7\conf). Естественно пути надо прописать свои, они будут почти такие же.
+To ensure Spark detects Python 100% of the time, rename the file spark-env.sh.template to spark-env.cmd and add the lines below (the file is located at this path: ...\spark-3.1.3-bin-hadoop2.7\conf). 
+Naturally, you need to specify your own paths, which will look almost exactly the same.
 
 ```
 set PYSPARK_PYTHON=C:\users\stepa\appdata\local\programs\python\python39\python.exe
 set PYSPARK_DRIVER_PYTHON=C:\users\stepa\appdata\local\programs\python\python39\python.exe
 ```
 
-Файл с кодом уже готов и называется spark_basics.py, в нём необходимо поменять пути для считывания df_people, df_country, df_parquet и для записи df_last, plans1.txt И plans.txt.
-После его требуется запустить и посмотреть на различные метрики в Spark UI(если не успеете за время выполнения приложения, то бегом в history server), а также 
-на планы запросов которые будут сохранены в отдельный файл с названием plans.txt или plans1.txt. Сравните план выполнения с кодом в spark_basics.py, 
-сравните различные планы(логический от физического, или какие-нибудь ещё). Также обязательно зайдите в history server в раздел SQL(сверху где Jobs, Stages...)
-и посмотрите всё в интерактивной форме. В статье которая посложнее про чтение планов достаточно хорошо объясняется как там всё читать.
+The code file is already prepared and named spark_basics.py. In it, you need to change the paths for reading df_people, df_country, and df_parquet, as well as for writing df_last, plans1.txt, and plans.txt.
 
-После самостоятельного разбора, обязательно загляните в "Объяснение плана запросов.docx", чтобы посмотреть на нюансы, которые надо обязательно увидеть.
+After that, you need to run it and look at the various metrics in the Spark UI (if you don't make it in time while the application is running, hurry over to the History Server), as well as the query plans that will be saved to a separate file named plans.txt or plans1.txt. Compare the execution plan with the code in spark_basics.py, and compare the different plans (logical vs. physical, or any others).
 
-Note: да, физический план можно найти в Spark UI(history server) в вкладке SQL под дагом. Но там только физический, в txt будут все.
-Note 2: history server это тот же spark ui, ток хранит то что уже прошло, а Spark UI то что в данный момент
+Also, make sure to go to the SQL tab in the History Server (at the top where Jobs, Stages, etc., are located) and explore everything interactively. 
+The more advanced article on reading plans explains quite well how to interpret everything there.
+
+After your self-review, make sure to take a look at "Explanation of Query Plans.docx" to check out the nuances that you absolutely need to see.
+
+Note: Yes, the physical plan can be found in the Spark UI (History Server) under the DAG in the SQL tab. However, only the physical plan is shown there, whereas the .txt file will contain all of them.
+Note 2: The History Server is the exact same thing as the Spark UI, except it stores completed runs, while the active Spark UI shows what is happening in real time.
