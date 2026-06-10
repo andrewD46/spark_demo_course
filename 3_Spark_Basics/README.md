@@ -9,7 +9,7 @@ In this lesson we will describe how Spark work. We will build our own distribute
 
 Spark, Hadoop, Java JDK.
 
-## Теория о кластере
+## Cluster Theory
 
 Before we can dive into optimizations and the internal workings of Spark itself, we first need to get familiar with the concepts of a distributed computing system - which is exactly what Spark is.
 Essentially, the system's architecture rests on 6 core concepts:
