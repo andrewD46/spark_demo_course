@@ -56,7 +56,7 @@ plans_1 = df_last._sc._jvm.PythonSQLUtils.explainString(df_last._jdf.queryExecut
 with open('path_to/3_Spark_Basics/plans.txt', 'w') as file:
     file.write(plans)
     
-#я оставил оба варианта вывода планов, но второй который plans_1 предпочтительнее. Планы одинаковые
+#I left both options for outputting the plans, but the second one, plans_1, is preferable. The plans are identical.
 
 with open('path_to/3_Spark_Basics/plans1.txt', 'w') as file:
     file.write(plans_1)
