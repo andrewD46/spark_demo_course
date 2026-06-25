@@ -231,7 +231,7 @@ After that, you need to run it and look at the various metrics in the Spark UI (
 Also, make sure to go to the SQL tab in the History Server (at the top where Jobs, Stages, etc., are located) and explore everything interactively. 
 The more advanced article on reading plans explains quite well how to interpret everything there.
 
-After your self-review, make sure to take a look at "Explanation of Query Plans.docx" to check out the nuances that you absolutely need to see.
+After your self-review, make sure to take a look at "Explanation of Query Plans.pdf" to check out the nuances that you absolutely need to see.
 
 Note: Yes, the physical plan can be found in the Spark UI (History Server) under the DAG in the SQL tab. However, only the physical plan is shown there, whereas the .txt file will contain all of them.
 Note 2: The History Server is the exact same thing as the Spark UI, except it stores completed runs, while the active Spark UI shows what is happening in real time.
