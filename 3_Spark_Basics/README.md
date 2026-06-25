@@ -115,7 +115,7 @@ Now you can take the MasterUI URL and open it in your web browser. This is nothi
 Next, we need to spin up, for example, two workers.
 Open a new CMD window and enter the following:
 ```
-spark-class org.apache.spark.deploy.worker.Worker spark://<адрес мастера> --cores 2 --memory 3g
+spark-class org.apache.spark.deploy.worker.Worker spark://<master address> --cores 2 --memory 3g
 ```
 This will create a worker on your computer with 2 cores and 3GB of RAM. Spark counts logical cores; for example, I have 6 cores with 2 threads each, which means 12 cores as far as Spark is concerned.
 To verify that it was successfully created, check the UI and you will see Workers (1).
@@ -123,7 +123,7 @@ Note: Do not switch networks while setting all of this up, because the addresses
 Let's create another worker, but this time with 3 cores and 4GB of memory.
 
 ```
-spark-class org.apache.spark.deploy.worker.Worker spark://<адрес мастера> --cores 3 --memory 4g
+spark-class org.apache.spark.deploy.worker.Worker spark://<master address> --cores 3 --memory 4g
 ```
 A second Worker should appear in Spark UI.
 Your cluster is now ready for action.
