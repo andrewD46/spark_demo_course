@@ -90,7 +90,7 @@ spark-submit –master <Spark master URL> –executor-memory 2g –executor-core
 3) Driver contacts the cluster manager and requests for resources to launch the Executors.
 4) The cluster manager launches the Executors on behalf of the Driver.
 5) Once the Executors are launched, they establish a direct connection with the Driver.
-6) he driver determines the total number of Tasks by checking the Lineage.
+6) The driver determines the total number of Tasks by checking the Lineage.
 7) The driver creates the Logical and Physical Plan.
 8) Once the Physical Plan is generated, Spark allocates the Tasks to the Executors.
 9) Task runs on Executor and each Task upon completion returns the result to the Driver.
