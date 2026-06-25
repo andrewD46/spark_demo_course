@@ -131,9 +131,8 @@ Your cluster is now ready for action.
 ##  A little (actually, a lot) of theory about jobs, stages, tasks, the optimizer, tables, and types of optimizations in the optimizer
 
 Before you start running the code, you first need to understand how everything works on this cluster.
-In these articles, you’ll learn about the aforementioned jobs, stages, and tasks.
+In this article, you’ll learn about the aforementioned jobs, stages, and tasks.
 
-- https://medium.com/@diehardankush/what-are-job-stage-and-task-in-apache-spark-2fc0d326c15f\
 - https://blog.dataengineerthings.org/deep-dive-into-spark-jobs-and-stages-481ecf1c9b62
 
 An article about the optimizer in Spark: https://g1thubhub.github.io/catalyst.html
